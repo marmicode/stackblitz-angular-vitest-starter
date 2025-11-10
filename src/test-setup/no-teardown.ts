@@ -1,11 +1,25 @@
-import { TestBed } from "@angular/core/testing";
-
-import { beforeEach } from "vitest";
+import { getTestBed } from '@angular/core/testing';
+import {
+  BrowserTestingModule,
+  platformBrowserTesting,
+} from '@angular/platform-browser/testing';
+import { beforeEach } from 'vitest';
 
 /**
  * @see https://github.com/angular/angular-cli/issues/31733
  */
-beforeEach(() => {
-  TestBed.resetTestingModule();
-  TestBed.configureTestingModule({ teardown: { destroyAfterEach: false } });
-});
+const symbol = Symbol.for('@marmicode/testbed-setup');
+const g = globalThis as unknown as { [symbol]: boolean };
+
+if (!g[symbol]) {
+  g[symbol] = true;
+
+  getTestBed().resetTestEnvironment();
+  getTestBed().initTestEnvironment(
+    BrowserTestingModule,
+    platformBrowserTesting(),
+    { teardown: { destroyAfterEach: false } },
+  );
+}
+
+beforeEach(() => getTestBed().resetTestingModule());

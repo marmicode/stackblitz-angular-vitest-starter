@@ -39,23 +39,40 @@ function createTestBedInitVirtualFile(providersFile, projectSourceRoot, polyfill
         const importPath = (0, path_1.toPosixPath)(node_path_1.default.join(dir, name));
         providersImport = `import providers from './${importPath}';`;
     }
+    /* Cf. Backport of https://github.com/angular/angular-cli/pull/31731 */
     return `
     // Initialize the Angular testing environment
-    import { NgModule${usesZoneJS ? ', provideZoneChangeDetection' : ''} } from '@angular/core';
+    import { NgModule${
+      usesZoneJS ? ", provideZoneChangeDetection" : ""
+    } } from '@angular/core';
     import { getTestBed, ɵgetCleanupHook as getCleanupHook } from '@angular/core/testing';
     import { BrowserTestingModule, platformBrowserTesting } from '@angular/platform-browser/testing';
     ${providersImport}
-    // Same as https://github.com/angular/angular/blob/05a03d3f975771bb59c7eefd37c01fa127ee2229/packages/core/testing/srcs/test_hooks.ts#L21-L29
-    beforeEach(getCleanupHook(false));
-    afterEach(getCleanupHook(true));
-    @NgModule({
-      providers: [${usesZoneJS ? 'provideZoneChangeDetection(), ' : ''}...providers],
-    })
-    export class TestModule {}
-    getTestBed().initTestEnvironment([BrowserTestingModule, TestModule], platformBrowserTesting(), {
-      errorOnUnknownElements: true,
-      errorOnUnknownProperties: true,
-    });
+
+    const ANGULAR_TESTBED_SETUP = Symbol.for('@angular/cli/testbed-setup');
+    if (!globalThis[ANGULAR_TESTBED_SETUP]) {
+      globalThis[ANGULAR_TESTBED_SETUP] = true;
+
+      // The Angular TestBed needs to be initialized before any tests are run.
+      // In a non-isolated environment, this setup file can be executed multiple times.
+      // The guard condition above ensures that the setup is only performed once.
+
+      // Same as https://github.com/angular/angular/blob/05a03d3f975771bb59c7eefd37c01fa127ee2229/packages/core/testing/srcs/test_hooks.ts#L21-L29
+      beforeEach(getCleanupHook(false));
+      afterEach(getCleanupHook(true));
+
+      @NgModule({
+        providers: [${
+          usesZoneJS ? "provideZoneChangeDetection(), " : ""
+        }...providers],
+      })
+      class TestModule {}
+
+      getTestBed().initTestEnvironment([BrowserTestingModule, TestModule], platformBrowserTesting(), {
+        errorOnUnknownElements: true,
+        errorOnUnknownProperties: true,
+      });
+    }
   `;
 }
 function adjustOutputHashing(hashing) {
@@ -85,11 +102,9 @@ async function getVitestBuildOptions(options, baseBuildOptions) {
     });
     entryPoints.set('init-testbed', 'angular:test-bed-init');
     const externalDependencies = new Set(['vitest']);
-    if (!options.browsers?.length) {
-        // Only add for non-browser setups.
-        // Comprehensive browser prebundling will be handled separately.
-        ANGULAR_PACKAGES_TO_EXTERNALIZE.forEach((dep) => externalDependencies.add(dep));
-    }
+
+    /* Cf. https://github.com/angular/angular-cli/issues/31732 */
+    ANGULAR_PACKAGES_TO_EXTERNALIZE.forEach((dep) => externalDependencies.add(dep));
     if (baseBuildOptions.externalDependencies) {
         baseBuildOptions.externalDependencies.forEach((dep) => externalDependencies.add(dep));
     }

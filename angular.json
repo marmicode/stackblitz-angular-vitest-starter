@@ -51,6 +51,7 @@
           "builder": "@angular/build:unit-test",
           "options": {
             "runner": "vitest",
+            "runnerConfig": true,
             "browsers": ["Chromium"]
           }
         }

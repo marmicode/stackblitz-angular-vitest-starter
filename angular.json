@@ -53,6 +53,11 @@
             "runner": "vitest",
             "runnerConfig": true,
             "browsers": ["Chromium"]
+          },
+          "configurations": {
+            "headless": {
+              "browsers": ["ChromiumHeadless"]
+            }
           }
         }
       },
